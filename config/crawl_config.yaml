@@ -1,0 +1,42 @@
+# 웹 크롤링 설정
+
+start_urls:
+  - https://gnu.ac.kr
+  - https://gnu.ac.kr/main/main.do
+
+crawl_settings:
+  max_depth: 5
+  max_pages: 10000
+  rate_limit: 1.0  # seconds between requests
+  timeout: 30
+  retry_attempts: 3
+  retry_delay: 5
+
+filters:
+  allowed_domains:
+    - gnu.ac.kr
+  exclude_patterns:
+    - "*.pdf"
+    - "*.jpg"
+    - "*.jpeg"
+    - "*.png"
+    - "*.gif"
+    - "*.zip"
+    - "*.xlsx"
+    - "*.xls"
+    - "*.doc"
+    - "*.docx"
+    - "*login*"
+    - "*logout*"
+    - "*print*"
+
+playwright_settings:
+  headless: true
+  wait_until: networkidle
+  wait_for_selector: null
+  viewport_width: 1920
+  viewport_height: 1080
+
+robots_txt:
+  respect: true
+  user_agent: "GNU-RAG-Bot/1.0"

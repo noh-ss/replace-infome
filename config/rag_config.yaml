@@ -1,0 +1,49 @@
+# RAG 파이프라인 설정
+
+text_processing:
+  chunk_size: 1000
+  chunk_overlap: 200
+  separators:
+    - "\n\n"
+    - "\n"
+    - "."
+    - "!"
+    - "?"
+    - ";"
+    - ","
+    - " "
+
+embedding:
+  model: nomic-embed-text
+  batch_size: 32
+
+retrieval:
+  top_k: 5
+  similarity_threshold: 0.7
+  search_type: similarity  # or mmr
+  mmr_lambda: 0.5
+
+llm:
+  model: llama3.1
+  temperature: 0.1
+  max_tokens: 2048
+  top_p: 0.9
+
+prompts:
+  system_prompt: "당신은 경상국립대학교(GNU) 관련 질문에 답하는 전문 상담원입니다."
+  user_prompt_template: |
+    다음 정보를 참고하여 사용자 질문에 정확하게 답변하세요:
+
+    [Context]
+    {context}
+
+    [Question]
+    {question}
+
+    [Instructions]
+    - 제공된 정보만을 사용하여 답변하세요
+    - 정보가 불충분하면 솔직하게 말하세요
+    - 출처를 명시하세요
+    - 친절하고 전문적인 톤을 유지하세요
+
+    답변:
