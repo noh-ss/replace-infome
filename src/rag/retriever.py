@@ -62,7 +62,7 @@ class Retriever:
         filters: Optional[Dict[str, Any]] = None
     ) -> List[RetrievedDocument]:
         """
-        쿼리와 관련된 문서 검색
+        쿼리와 관련된 문서 검색 (하이브리드: 시맨틱 + 키워드)
 
         Args:
             query: 검색 쿼리
@@ -81,20 +81,34 @@ class Retriever:
         logger.info(f"Retrieving documents for query: '{query[:100]}...'")
 
         try:
-            # ChromaDB 검색
+            # ChromaDB 검색 (더 많은 결과를 가져와서 키워드 매칭으로 재정렬)
+            search_k = max(k * 5, 50)  # 최소 50개 또는 k*5개 검색
             results = self.chroma_manager.query(
                 query_text=query,
-                n_results=k,
+                n_results=search_k,
                 where=filters
             )
 
             # 결과 파싱
             documents = self._parse_results(results)
 
-            # 유사도 임계값 필터링
+            # 키워드 매칭으로 점수 조정 (하이브리드 검색)
+            query_terms = query.lower().split()
+            for doc in documents:
+                text_lower = doc.text.lower()
+                # 쿼리 단어가 문서에 포함되면 점수 보너스 (점수가 낮을수록 좋음)
+                keyword_matches = sum(1 for term in query_terms if term in text_lower)
+                if keyword_matches > 0:
+                    # 키워드 매칭 시 점수를 크게 낮춤 (우선순위 상승)
+                    doc.score = doc.score * (0.3 ** keyword_matches)
+
+            # 점수로 재정렬 (낮을수록 좋음)
+            documents.sort(key=lambda x: x.score)
+
+            # 유사도 임계값 필터링 및 top_k 적용
             filtered_docs = [
-                doc for doc in documents
-                if doc.score <= self.similarity_threshold * 1000  # ChromaDB는 거리를 반환 (낮을수록 유사)
+                doc for doc in documents[:k]
+                if doc.score <= self.similarity_threshold * 1000
             ]
 
             logger.info(f"Retrieved {len(documents)} documents, {len(filtered_docs)} after filtering")

@@ -71,6 +71,30 @@ class URLManager:
             )
         """)
 
+        # URL 추출 내역 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS extraction_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_url TEXT NOT NULL,
+                extracted_at TEXT NOT NULL,
+                total_links INTEGER,
+                filtered_links INTEGER,
+                added_to_queue INTEGER,
+                status TEXT DEFAULT 'completed'
+            )
+        """)
+
+        # 추출된 링크 상세 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS extracted_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                extraction_id INTEGER,
+                link_url TEXT NOT NULL,
+                added_to_queue INTEGER DEFAULT 0,
+                FOREIGN KEY (extraction_id) REFERENCES extraction_history(id)
+            )
+        """)
+
         conn.commit()
         conn.close()
 

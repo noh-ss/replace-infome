@@ -58,8 +58,8 @@ class RAGSettings(BaseSettings):
     """RAG 파이프라인 설정"""
     chunk_size: int = Field(default=1000, env="CHUNK_SIZE")
     chunk_overlap: int = Field(default=200, env="CHUNK_OVERLAP")
-    top_k_retrieval: int = Field(default=5, env="TOP_K_RETRIEVAL")
-    similarity_threshold: float = Field(default=0.7, env="SIMILARITY_THRESHOLD")
+    top_k_retrieval: int = Field(default=10, env="TOP_K_RETRIEVAL")
+    similarity_threshold: float = Field(default=1.0, env="SIMILARITY_THRESHOLD")
 
     class Config:
         env_file = PROJECT_ROOT / ".env"

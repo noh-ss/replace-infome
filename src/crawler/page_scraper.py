@@ -31,6 +31,7 @@ class PageScraper:
         self.headless = headless
         self.playwright = None
         self.browser: Optional[Browser] = None
+        self.context = None
         self.rate_limit = settings.crawl.crawl_rate_limit
         self.user_agent = settings.crawl.user_agent
         self.timeout = settings.crawl_config.get("crawl_settings", {}).get("timeout", 30) * 1000
@@ -58,19 +59,34 @@ class PageScraper:
         if self.playwright is None:
             self.playwright = sync_playwright().start()
             self.browser = self.playwright.chromium.launch(headless=self.headless)
+            # SSL 오류 무시하는 기본 컨텍스트 생성
+            self.context = self.browser.new_context(ignore_https_errors=True)
             logger.info("Browser started")
 
     def stop(self):
         """브라우저 및 Playwright 종료"""
-        if self.browser:
-            self.browser.close()
-            self.browser = None
-            logger.info("Browser closed")
+        try:
+            if self.context:
+                self.context.close()
+                self.context = None
+        except:
+            pass
 
-        if self.playwright:
-            self.playwright.stop()
-            self.playwright = None
-            logger.info("Playwright stopped")
+        try:
+            if self.browser:
+                self.browser.close()
+                self.browser = None
+                logger.info("Browser closed")
+        except:
+            pass
+
+        try:
+            if self.playwright:
+                self.playwright.stop()
+                self.playwright = None
+                logger.info("Playwright stopped")
+        except:
+            pass
 
     def _apply_rate_limit(self):
         """속도 제한 적용"""
@@ -108,15 +124,18 @@ class PageScraper:
 
         logger.info(f"Fetching: {url}")
 
+        page = None
         try:
-            # 새 페이지 생성
-            page = self.browser.new_page(
-                user_agent=self.user_agent,
-                viewport={"width": self.viewport_width, "height": self.viewport_height}
-            )
+            # 새 페이지 생성 (context 사용)
+            page = self.context.new_page()
+            page.set_viewport_size({"width": self.viewport_width, "height": self.viewport_height})
 
-            # 페이지 이동
-            response = page.goto(url, wait_until=self.wait_until, timeout=self.timeout)
+            # 페이지 이동 (domcontentloaded 사용 - 더 안정적)
+            try:
+                response = page.goto(url, wait_until="domcontentloaded", timeout=self.timeout)
+            except PlaywrightTimeout:
+                logger.warning(f"Timeout, retrying with 'commit': {url}")
+                response = page.goto(url, wait_until="commit", timeout=self.timeout)
 
             if response is None:
                 logger.error(f"No response from {url}")
@@ -157,10 +176,18 @@ class PageScraper:
 
         except PlaywrightTimeout:
             logger.error(f"Timeout while fetching: {url}")
+            try:
+                page.close()
+            except:
+                pass
             return None
 
         except Exception as e:
             logger.error(f"Error fetching {url}: {str(e)}")
+            try:
+                page.close()
+            except:
+                pass
             return None
 
     def _extract_links(self, page: Page) -> List[str]:
